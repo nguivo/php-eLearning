@@ -1,0 +1,20 @@
+{
+    "name": "careit/e-learning",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "Careit\\ELearning\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Ngu Ivo",
+            "email": "nguivo9@gmail.com"
+        }
+    ],
+    "require": {
+        "vlucas/phpdotenv": "^5.6",
+        "symfony/routing": "^7.4",
+        "php-di/php-di": "^7.1"
+    }
+}
