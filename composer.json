@@ -3,7 +3,8 @@
     "type": "project",
     "autoload": {
         "psr-4": {
-            "Careit\\ELearning\\": "src/"
+            "Framework\\": "./",
+            "App\\": "./App"
         }
     },
     "authors": [
@@ -13,8 +14,6 @@
         }
     ],
     "require": {
-        "vlucas/phpdotenv": "^5.6",
-        "symfony/routing": "^7.4",
-        "php-di/php-di": "^7.1"
+        "vlucas/phpdotenv": "^5.6"
     }
 }

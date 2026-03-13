@@ -1,31 +1,31 @@
 <?php
+    declare(strict_types=1);
+
+    /**
+     * Public/index.php - Application Entry Point
+     *
+     * .htaccess routes every request here
+     * this file boots the app, loads routes, and dispatches.
+     * */
+
+use App\Core\Request;
+use App\Core\Response;
+use App\Core\Router;
 
     require_once dirname(__DIR__)."/vendor/autoload.php";
 
-    use App\Controller\BlogController;
-    use Symfony\Component\Routing\Generator\UrlGenerator;
-    use Symfony\Component\Routing\Matcher\UrlMatcher;
-    use Symfony\Component\Routing\RequestContext;
-    use Symfony\Component\Routing\Route;
-    use Symfony\Component\Routing\RouteCollection;
+    // Environment Variables (.env file)
+    $dotenv = Dotenv\Dotenv::createImmutable(dirname(__DIR__));
+    $dotenv->load();
 
-    $route = new Route('/blog/{slug}', ['_controller' => BlogController::class]);
-    $routes = new RouteCollection();
-    $routes->add('blog_show', $route);
+    // Core objects
+    $request = new Request();
+    $response = new Response();
+    $router = new Router();
 
-    $context = new RequestContext();
+    // Load route definitions
+    require_once dirname(__DIR__).'/App/Routes/web.php';
 
-    // Routing can match routes with incoming requests
-    $matcher = new UrlMatcher($routes, $context);
-    $parameters = $matcher->match('/blog/lorem-ipsum');
-    // $parameters = [
-    //     '_controller' => 'App\Controller\BlogController',
-    //     'slug' => 'lorem-ipsum',
-    //     '_route' => 'blog_show'
-    // ]
+    // Dispatch = match the request to a route and run it
+    $router->dispatch($request, $response);
 
-    // Routing can also generate URLs for a given route
-    $generator = new UrlGenerator($routes, $context);
-    $url = $generator->generate('blog_show', [
-        'slug' => 'my-blog-post',
-    ]);
