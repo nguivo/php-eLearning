@@ -4,42 +4,49 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Core\Route;
+use App\Core\Request;
+use App\Core\Response;
+use App\Core\View;
 use Closure;
-use InvalidArgumentException;
-
 
 /**
  * Router
  *
- * Handles URL routing for the entire platform
+ * Registers routes and dispatches incoming requests to the correct handler.
  *
+ * Each route is a Route object and not an associative array.
  * The Router's job is purely orchestration:
- * - Accept route registration and build Route objects
- * - Manage the group stack (prefix + middleware inheritance)
- * - Maintain the named-route index for URL generation
- * - On dispatch: find the matching Route, run its middleware, call its
- * - handler
- * */
+ *   - Accept route registrations and build Route objects
+ *   - Manage the group stack (prefix + middleware inheritance)
+ *   - Maintain the named-route index for URL generation
+ *   - On dispatch: find the matching Route, run its middleware, call its handler
+ *
+ * The Route class owns all route-specific logic:
+ *   matching, pattern compilation, and parameter extraction.
+ */
 class Router
 {
-    // -----------------------------------------------------
-    // Properties
-    // -----------------------------------------------------
     private array $routes = [];
+    private View $view;
     private array $groupStack = [];
     private array $namedRoutes = [];
     private string $controllerNamespace = 'App\\Controllers\\';
 
 
-    // ---------------------------------------------------
-    // Route Registration - Public API
-    // ---------------------------------------------------
+    public function __construct(View $view)
+    {
+        $this->view = $view;
+    }
 
-    /* Example: $router->get('/courses', 'CourseController@index') */
+
+    // -------------------------------------------------------------------------
+    // Route Registration — Public API
+    // -------------------------------------------------------------------------
+
     public function get(string $path, Closure|string $handler): Route
     {
-        return
-            $this->addRoute('GET', $path, $handler);
+        return $this->addRoute('GET', $path, $handler);
     }
 
 
@@ -49,17 +56,12 @@ class Router
     }
 
 
-    /**
-     * Used for full resource replacement (all fields sent)
-     * Example: $router->put('/courses/{id:\d+}', 'CourseController@update';
-     * */
     public function put(string $path, Closure|string $handler): Route
     {
         return $this->addRoute('PUT', $path, $handler);
     }
 
 
-    /** Used for partial resource updates (only changed fields sent) */
     public function patch(string $path, Closure|string $handler): Route
     {
         return $this->addRoute('PATCH', $path, $handler);
@@ -72,7 +74,6 @@ class Router
     }
 
 
-    /** Routes that respond to any HTTP method. Useful for API endpoints that handle their own method-switching internally */
     public function any(string $path, Closure|string $handler): self
     {
         foreach (['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as $method) {
@@ -82,18 +83,17 @@ class Router
     }
 
 
-    // ---------------------------------------------------------
-    // Fluent Chaining - middleware() and name()
-    // ---------------------------------------------------------
-
-    /* Add middleware to the most recently registered route */
+    /**
+     * Add middleware to the most recently registered route.
+     * Delegates to Route::addMiddleware() to merge the new middleware with any existing middleware on the Route.
+     */
     public function middleware(array $middlewareList): self
     {
         $this->lastRoute()?->addMiddleware($middlewareList);
         return $this;
     }
 
-    /* Name the most recently registered route */
+
     public function name(string $name): self
     {
         $route = $this->lastRoute();
@@ -105,22 +105,20 @@ class Router
     }
 
 
-    // -------------------------------------------------------
+    // -------------------------------------------------------------------------
     // Route Groups
-    // -------------------------------------------------------
+    // -------------------------------------------------------------------------
 
     /**
-     *  Group routes under a shared URL prefix and/or middleware
-     * Groups nest correctly - each inner group inherits and extends
-     * the outer group's cumulative prefix and middleware list.
-     **/
+     * Group routes under a shared URL prefix and/or middleware.
+     */
     public function group(array $options, Closure $callback): void
     {
         $parentGroup = end($this->groupStack) ?: ['prefix' => '', 'middleware' => []];
 
         $newGroup = [
-            'prefix' => ($parentGroup['prefix'] ?? '').($options['prefix'] ?? ''),
-            'middleware' => array_merge($parentGroup['middleware'] ?? [], $options['middleware'] ?? [])
+            'prefix'     => ($parentGroup['prefix'] ?? '') . ($options['prefix'] ?? ''),
+            'middleware' => array_merge($parentGroup['middleware'] ?? [], $options['middleware'] ?? []),
         ];
 
         $this->groupStack[] = $newGroup;
@@ -129,34 +127,37 @@ class Router
     }
 
 
-    // -------------------------------------------------------
+    // -------------------------------------------------------------------------
     // URL Generation
-    // -------------------------------------------------------
+    // -------------------------------------------------------------------------
 
     /**
-     * Generate a URL for a named route, substituting in parameters
+     * Generate a URL for a named route, substituting in parameters.
      *
-     * $router->get('/courses/{id:\d+}/lessons/{lessonId:\d+}', '...')
+     * Previously we looked up the route by index ($this->routes[$this->namedRoutes[$name]])
+     * and then read $route['path']. Now we look up the Route object directly
+     * and call $route->getPath() — cleaner and no index arithmetic needed.
+     *
+     *   $router->get('/courses/{id:\d+}/lessons/{lessonId:\d+}', '...')
      *          ->name('lesson.show');
      *
-     * $url = $router->route('lesson.show', ['id'=>5,'lessonId'=>12]);
-     * // -> '/courses/5/lessons/12'
+     *   $url = $router->route('lesson.show', ['id' => 5, 'lessonId' => 12]);
+     *   // → '/courses/5/lessons/12'
      *
-     * @throws InvalidArgumentException if the name has not
-     * been registered
-     * */
+     * @throws \InvalidArgumentException if the name has not been registered
+     */
     public function route(string $name, array $params = []): string
     {
         if (!isset($this->namedRoutes[$name])) {
-            throw new InvalidArgumentException(
-                "No route registered with name: '{$name}'".
-                "Availabel names: ". implode(', ', array_keys($this->namedRoutes))
+            throw new \InvalidArgumentException(
+                "No route registered with name: '{$name}'. " .
+                "Available names: " . implode(', ', array_keys($this->namedRoutes))
             );
         }
 
-        // Retrieve the Route object
+        // Retrieve the Route object — previously this was an array index lookup
         $route = $this->namedRoutes[$name];
-        $path = $route->getPath();
+        $path  = $route->getPath();
 
         // Substitute each {param} or {param:regex} with its supplied value
         foreach ($params as $key => $value) {
@@ -173,27 +174,30 @@ class Router
     }
 
 
-    // ----------------------------------------------------------
+    // -------------------------------------------------------------------------
     // Dispatching
-    // ----------------------------------------------------------
+    // -------------------------------------------------------------------------
 
     /**
-     * match the incoming request to a Route and run it.
+     * Match the incoming request to a Route and run it.
      *
-     * This method:
-     * 1. iterates over Route objects
-     * 2. Calls $route->matchesPath() - to distinguish 404 from 405
-     * 3. Calls $route->matches() - done by Route
-     * 4. Calls $route->extractParams()
-     * 5. Passes control to runMiddleware() -> callHandler()
-     * */
+     * The Router
+     *
+     *   1. Iterates over Route objects
+     *   2. Calls $route->matchesPath() — to distinguish 404 from 405
+     *   3. Calls $route->matches() — matching is the Route's own responsibility
+     *   4. Calls $route->extractParams() — parameter extraction belongs to Route
+     *   5. Passes control to runMiddleware() → callHandler()
+     *
+     * The Router no longer needs buildPattern() or extractParams() as private
+     * methods — those now live on the Route class.
+     */
     public function dispatch(Request $request, Response $response): void
     {
         $method = $request->getMethod();
-        $path = $request->getPath();
-        $matches = [];
+        $path   = $request->getPath();
 
-        // collect HTTP methods that have a matching path (for 405 allow header
+        // Collect HTTP methods that have a matching path (for 405 Allow header)
         $allowedMethods = [];
 
         foreach ($this->routes as $route) {
@@ -202,7 +206,7 @@ class Router
                 continue;
             }
 
-            // if path matches - record its method for a potential 405 response
+            // Path matches — record its method for a potential 405 response
             $allowedMethods[] = $route->getMethod();
 
             // Now check the full match (path + method)
@@ -210,11 +214,11 @@ class Router
                 continue;
             }
 
-            // Full Match - extract named URL params and inject into Request
+            // Full match — extract named URL params and inject into Request
             $params = $route->extractParams($matches);
             $request->setRouteParams($params);
 
-            // Run middleware pipeline -> handler at the centre
+            // Run middleware pipeline → handler at the centre
             $this->runMiddleware(
                 $route->getMiddleware(),
                 $request,
@@ -227,41 +231,39 @@ class Router
 
         // No match found
         if (!empty($allowedMethods)) {
-            $this->handleMethodNotAllowed($response, $allowedMethods);
+            $this->handleMethodNotAllowed($allowedMethods);
         } else {
-            $this->handleNotFound($response);
+            $this->handleNotFound();
         }
     }
 
 
-    // ------------------------------------------------------
+    // -------------------------------------------------------------------------
     // Private Helpers
-    // ------------------------------------------------------
+    // -------------------------------------------------------------------------
 
-    /**
-     * Instantiate a Route object and register it
-     * */
     private function addRoute(string $method, string $path, Closure|string $handler): Route
     {
         $group = end($this->groupStack) ?: ['prefix' => '', 'middleware' => []];
 
-        $fullPath = $this->normalisePath($group['prefix'].$path);
+        $fullPath = $this->normalisePath($group['prefix'] . $path);
 
         $route = new Route(
-            method: $method,
-            path: $fullPath,
-            handler: $handler,
+            method:     $method,
+            path:       $fullPath,
+            handler:    $handler,
             middleware: $group['middleware']
         );
 
         $this->routes[] = $route;
-        return $route; // returned so callers can chain ->middleware() and name()
+
+        return $route; // returned so callers can chain ->middleware() and ->name()
     }
 
 
-    /*
-     * return the most recently registered object or null if none exist.
-     * */
+    /**
+     * Return the most recently registered Route object, or null if none exist.
+     */
     private function lastRoute(): ?Route
     {
         $last = end($this->routes);
@@ -269,9 +271,9 @@ class Router
     }
 
 
-    /*
+    /**
      * Execute the middleware pipeline using the "onion" pattern.
-     * */
+     */
     private function runMiddleware(array $middlewareList, Request $request, Response $response, Closure $core): void
     {
         $pipeline = array_reduce(
@@ -290,8 +292,8 @@ class Router
 
 
     /**
-     * Resolve and invoke the route handler
-     * */
+     * Resolve and invoke the route handler.
+     */
     private function callHandler(Closure|string $handler, Request $request, Response $response): void
     {
         if ($handler instanceof Closure) {
@@ -306,15 +308,21 @@ class Router
         }
 
         [$controllerName, $method] = explode('@', $handler, 2);
-        $controllerClass = $this->controllerNamespace.$controllerName;
+
+        $controllerClass = $this->controllerNamespace . $controllerName;
 
         if (!class_exists($controllerClass)) {
-            throw new \InvalidArgumentException(
-                "Controller class '{$controllerClass}' not found. " . "Check the class name and namespace in your route definition."
+            throw new \RuntimeException(
+                "Controller class '{$controllerClass}' not found. " .
+                "Check the class name and namespace in your route definition."
             );
         }
 
-        $controller = new $controllerClass();
+        // Pass the shared View instance as the first constructor argument.
+        // Once the Container is built, replace this line with:
+        //   $controller = $container->make($controllerClass);
+        // and the Container will resolve View plus all other dependencies automatically.
+        $controller = new $controllerClass($this->view);
 
         if (!method_exists($controller, $method)) {
             throw new \RuntimeException(
@@ -325,57 +333,39 @@ class Router
         $controller->$method($request, $response);
     }
 
-
-    /*
+    /**
      * Normalise a URL path:
-     * */
+     *   - Ensure it begins with /
+     *   - Collapse any // double slashes (produced by group prefix concatenation)
+     *   - Strip trailing slash (except for root /)
+     */
     private function normalisePath(string $path): string
     {
-        $path = '/'.ltrim($path, '/');
+        $path = '/' . ltrim($path, '/');
         $path = preg_replace('#/{2,}#', '/', $path);
         return $path === '/' ? $path : rtrim($path, '/');
     }
 
-
-    /** Send a 404 Not Found response */
-    private function handleNotFound(Response $response): void
+    /**
+     * Send a 404 Not Found response.
+     *
+     * Delegates to View::renderError() — which looks for errors/404.php,
+     * falls back to errors/generic.php, and finally falls back to inline HTML.
+     * No raw strings here — all rendering goes through the View pipeline.
+     */
+    private function handleNotFound(): void
     {
-        $response->setStatusCode(404);
-        $response->setBody('<h1>404 — Page Not Found</h1>');
-        $response->send();
+        $this->view->renderError(404, 'The page you requested could not be found.');
     }
 
     /**
      * Send a 405 Method Not Allowed response.
-     * The HTTP spec requires an Allow header listing the valid methods for the path.
+     *
+     * @param string[] $allowedMethods HTTP methods that ARE valid for this path
      */
-    private function handleMethodNotAllowed(Response $response, array $allowedMethods): void
+    private function handleMethodNotAllowed(array $allowedMethods): void
     {
-        $response->setStatusCode(405);
-        $response->setHeader('Allow', implode(', ', array_unique($allowedMethods)));
-        $response->setBody('<h1>405 — Method Not Allowed</h1>');
-        $response->send();
+        header('Allow: ' . implode(', ', array_unique($allowedMethods)));
+        $this->view->renderError(405, 'Method Not Allowed');
     }
-
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
