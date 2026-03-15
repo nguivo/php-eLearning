@@ -16,7 +16,7 @@ class View
      * Data shared across ALL views for the lifetime of this request.
      *
      * Set once via share() and automatically merged into every render call
-     * Use this for things every view needs: app name, authenticated user,
+     * Used for things every view needs: app name, authenticated user,
      * flash messages, CSRF token, etc.
      * */
     private array $globals = [];
@@ -34,11 +34,6 @@ class View
 
     /**
      * Global / Shared Data
-     *
-     * Share a key-value pair with every view rendered this request
-     *
-     * Call this during application bootstrap - before any
-     * rendering happens
      *
      * Usage:
      *      $view->share('appName', 'eLearning Platform')
@@ -78,12 +73,6 @@ class View
      *
      * Global variables are merged with data automatically
      * Data passed directly takes precedence over globals
-     *
-     * Usage - render a partial (e.g. a course card component):
-     *      $html = $view->render('partials/course-card', ['course' => $course])
-     *
-     * Usage - render a standalone view without layout:
-     *      $html = $view->render('emails/welcome', ['user' => $user])
      *
      * */
     public function render(string $view, array $data = []): string
@@ -170,7 +159,7 @@ class View
 
     public function getPath(string $view): string
     {
-        return $this->resolvedPath($view);
+        return $this->resolvePath($view);
     }
 
 
@@ -181,7 +170,7 @@ class View
     /*
      * Resolve a view name to its absolute filesystem path
      * */
-    public function resolvedPath(string $view): string
+    public function resolvePath(string $view): string
     {
         $relative = str_replace('.', '/', $view);
         $relative = ltrim($relative, '/');
