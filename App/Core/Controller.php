@@ -6,34 +6,6 @@ namespace App\Core;
 
 /**
  * Controller — Base class for all application controllers.
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * RELATIONSHIP WITH VIEW
- * ─────────────────────────────────────────────────────────────────────────────
- * The Controller doesn't contain ANY file-inclusion or output-buffering
- * logic. Every rendering call delegates to the injected View instance:
- *
- *   Controller::render()  →  View::render()              (partial, no layout)
- *   Controller::view()    →  View::renderWithLayout()    (inner view + layout)
- *   Controller::abort404  →  View::renderError(404, ...) (error page)
- *   Controller::abort403  →  View::renderError(403, ...) (error page)
- *
- * This means View is the single source of truth for all rendering.
- * Change the views directory, add a global variable, or swap the template
- * engine — you do it once in View, and every controller benefits.
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * WHAT BELONGS HERE
- * ─────────────────────────────────────────────────────────────────────────────
- * Only behaviour that EVERY controller genuinely needs:
- *   ✓ Delegating rendering to View
- *   ✓ JSON responses
- *   ✓ Redirects and redirectBack
- *   ✓ Flash messages
- *   ✓ Auth helpers (who is logged in?)
- *   ✓ Input helpers (read + sanitise request data)
- *   ✓ HTTP abort helpers (404, 403)
- *
  */
 abstract class Controller
 {
@@ -49,6 +21,7 @@ abstract class Controller
     }
 
 
+    /* Renders a view without a layout */
     protected function render(string $view, array $data = []): string
     {
         return $this->view->render($view, $data);
@@ -56,18 +29,6 @@ abstract class Controller
 
     /**
      * Render a view inside a layout and send the output to the browser.
-     *
-     * This is the method controller action methods call most often.
-     * It renders the inner view, wraps it in the layout, and echoes the result.
-     *
-     * Delegates to: View::renderWithLayout() + echo
-     *
-     * Usage:
-     *   // Uses the default layout (layouts/main):
-     *   $this->view('courses/index', ['courses' => $courses]);
-     *
-     *   // Override the layout — useful for auth pages with a minimal layout:
-     *   $this->view('auth/login', [], 'layouts/auth');
      *
      * @param string               $template  The inner view file
      * @param array<string, mixed> $data      Variables for both view and layout
@@ -134,25 +95,6 @@ abstract class Controller
     /**
      * Store a one-time message in the session to display on the next request.
      *
-     * Flash messages are written here and read by the layout view.
-     * They are automatically deleted after being read (see getFlash()).
-     *
-     * Usage in a controller — set before redirecting:
-     *   $this->flash('success', 'Course published successfully.');
-     *   return $this->redirect('/instructor/courses');
-     *
-     *   $this->flash('error', 'Something went wrong. Please try again.');
-     *   return $this->redirectBack();
-     *
-     * Available types: 'success', 'error', 'warning', 'info'
-     *
-     * Usage in the layout view (App/Views/layouts/main.php):
-     *   <?php foreach (['success','error','warning','info'] as $type): ?>
-     *       <?php if ($msg = \App\Core\Controller::getFlash($type)): ?>
-     *           <div class="alert alert-<?= $type ?>"><?= htmlspecialchars($msg) ?></div>
-     *       <?php endif; ?>
-     *   <?php endforeach; ?>
-     *
      * @param string $type    'success' | 'error' | 'warning' | 'info'
      * @param string $message The message text
      */
@@ -181,13 +123,6 @@ abstract class Controller
     // Authentication Helpers
     // -------------------------------------------------------------------------
 
-    /**
-     * Return the authenticated user's ID from the session, or null.
-     *
-     * Usage:
-     *   $userId = $this->authId();
-     *   if ($course->instructorId !== $this->authId()) $this->abort403();
-     */
     protected function authId(): ?int
     {
         $this->startSessionIfNeeded();
@@ -195,27 +130,13 @@ abstract class Controller
         return $id !== null ? (int) $id : null;
     }
 
-    /**
-     * Return true if a user is currently logged in.
-     *
-     * Usage:
-     *   if ($this->isLoggedIn()) { ... }
-     */
+
     protected function isLoggedIn(): bool
     {
         return $this->authId() !== null;
     }
 
-    /**
-     * Redirect to login if no user is authenticated.
-     *
-     * Use this inside controller methods when the protection depends on
-     * runtime context and cannot be expressed as route middleware.
-     * For most cases, prefer AuthMiddleware on the route itself.
-     *
-     * Usage:
-     *   $this->requireAuth();
-     */
+
     protected function requireAuth(): void
     {
         if (!$this->isLoggedIn()) {
