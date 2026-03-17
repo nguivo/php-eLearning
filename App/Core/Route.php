@@ -226,7 +226,7 @@ class Route
         // because both patterns would match the same opening brace
         $pattern = preg_replace(
             '#\{(\w+):([^}]+)\}#',
-            '(?P<$1>$2',
+            '(?P<$1>$2)',
             $path
         );
 
@@ -239,7 +239,7 @@ class Route
 
         // 3. {param} - required, no custom regex constraint
         $pattern = preg_replace(
-            '#\{(w+)\}#',
+            '#\{(\w+)\}#',
             '(?P<$1>[^\/]+)',
             $pattern
         );
