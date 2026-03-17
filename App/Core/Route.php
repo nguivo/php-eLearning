@@ -26,6 +26,7 @@ class Route
      * e.g. '#^/courses/(?P<id>\d+)/lessons/(?P<lessonId>\d+)$#'
      * */
     private string $compiledPattern;
+    private mixed $nameCallback = null;
 
 
     public function __construct(
@@ -42,20 +43,52 @@ class Route
     }
 
 
-    // --------------------------------------------------------------
-    // Mutation Methods - called by the Router for fluent chaining
-    // --------------------------------------------------------------
-    public function addMiddleware(array $middlewareList): self
+    public function middleware(array $middlewareList): self
     {
         $this->middleware = array_merge($this->middleware, $middlewareList);
         return $this;
     }
 
 
-    public function setName(string $name): self
+    /** Name this route for URL generation - called by /Routes/web.php */
+    public function name(string $name): self
     {
         $this->name = $name;
+
+        if ($this->nameCallback !== null) {
+            ($this->nameCallback)($name, $this);
+        }
+
         return $this;
+    }
+
+    // --------------------------------------------------------------
+    // Mutation Methods - called by the Router for fluent chaining
+    // --------------------------------------------------------------
+
+    /**
+     * Register the callback the Router provides for name registration.
+     *
+     * Called by Router::addRoute() immediately after the Route is created.
+     * When name() is later called on this Route, the callback fires and the
+     * Router registers this Route in its $namedRoutes index.
+     *
+     * @param callable(string, Route): void $callback
+     */
+    public function setNameCallback(callable $callback): void
+    {
+        $this->nameCallback = $callback;
+    }
+
+
+    /**
+     * Internal alias for middleware() — used by the Router when it needs
+     * to append group-inherited middleware without going through the public
+     * fluent API (e.g. inside Router::middleware() fallback method).
+     */
+    public function addMiddleware(array $middlewareList): self
+    {
+        return $this->middleware($middlewareList);
     }
 
 

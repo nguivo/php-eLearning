@@ -90,17 +90,6 @@ class Router
     }
 
 
-    public function name(string $name): self
-    {
-        $route = $this->lastRoute();
-        if ($route !== null) {
-            $route->setName($name);
-            $this->namedRoutes[$name] = $route;
-        }
-        return $this;
-    }
-
-
     // -------------------------------------------------------------------------
     // Route Groups
     // -------------------------------------------------------------------------
@@ -196,6 +185,7 @@ class Router
         // Collect HTTP methods that have a matching path (for 405 Allow header)
         $allowedMethods = [];
 
+        $matches = [];
         foreach ($this->routes as $route) {
             // Does this route's path pattern match? (ignores HTTP method)
             if (!$route->matchesPath($path)) {
@@ -250,6 +240,10 @@ class Router
             handler:    $handler,
             middleware: $group['middleware']
         );
+
+        $route->setNameCallback(function (string $name, Route $route): void {
+            $this->namedRoutes[$name] = $route;
+        });
 
         $this->routes[] = $route;
 
