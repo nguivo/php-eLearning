@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Middleware\AuthMiddleware;
+use App\Middleware\GuestMiddleware;
 
 /**
  * Web Routes
