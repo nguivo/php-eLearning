@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Middleware\AdminMiddleware;
 use App\Middleware\AuthMiddleware;
 use App\Middleware\GuestMiddleware;
+use App\Middleware\InstructorMiddleware;
 
 /**
  * Web Routes
