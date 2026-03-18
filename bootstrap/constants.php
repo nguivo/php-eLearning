@@ -42,5 +42,21 @@ define('LOGS_PATH',    BASE_PATH . '/logs');
 // Directory Separator
 define('DS', DIRECTORY_SEPARATOR);
 
-// Site constants
-define('APP_NAME', $_ENV['APP_NAME']);
+
+// Enables the rest of the application to access the values inside
+// .env file without ever touching $_ENV
+// $_ENV is only called within config files and nowhere else in the app
+function config(string $key, mixed $default = null): mixed
+{
+    static $config = [];
+
+    // key format: 'database.host', 'mail.port', 'app.debug'
+    [$file, $setting] = explode('.', $key, 2);
+
+    if (!isset($config[$file])) {
+        $path = CONFIG_PATH . DS . $file . '.php';
+        $config[$file] = file_exists($path) ? require $path : [];
+    }
+
+    return $config[$file][$setting] ?? $default;
+}

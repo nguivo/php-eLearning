@@ -13,9 +13,18 @@ class ViewServiceProvider extends ServiceProvider
     {
         $this->container->singleton(View::class, function (Container $c): View {
             return new View(
-                viewsPath:     BASE_PATH . '/App/Views',
+                viewsPath:     VIEWS_PATH,
                 defaultLayout: 'layouts/main'
             );
         });
     }
+
+
+    public function boot(): void
+    {
+        $view = $this->container->make(View::class);
+        $view->share('appName', config('app.name'));
+        $view->share('appEnv', config('app.env'));
+    }
+
 }

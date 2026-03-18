@@ -13,14 +13,14 @@ class DatabaseServiceProvider extends AppServiceProvider
     {
         $this->container->singleton(PDO::class, function (Container $c): PDO {
             $dsn = sprintf(
-                '%s:host=%s;port=%s;dbname=%s;charset=%s', $_ENV['DB_DRIVER']  ?? 'mysql',
-                $_ENV['DB_HOST'] ?? '127.0.0.1',
-                $_ENV['DB_PORT'] ?? '3306',
-                $_ENV['DB_NAME'] ?? 'elearning',
-                $_ENV['DB_CHARSET'] ?? 'utf8mb4'
+                '%s:host=%s;port=%s;dbname=%s;charset=%s', config('database.driver'),
+                config('database.host'),
+                config('database.port'),
+                config('database.name'),
+                config('database.charset'),
             );
 
-            return new PDO($dsn, $_ENV['DB_USER'] ?? 'root', $_ENV['DB_PASS'] ?? '', [
+            return new PDO($dsn, config('database.user'), config('database.pass'), [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES   => false,
