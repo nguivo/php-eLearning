@@ -5,15 +5,16 @@ declare(strict_types=1);
 /**
  * public/index.php — Application Entry Point
  *
- * Every request is routed here by Apache's .htaccess.
+ * Apache routes every HTTP request here via .htaccess.
+ * This file has exactly four jobs and nothing else:
  *
- * Boot order:
- *   1. Autoloader
- *   2. Environment variables (.env)
- *   3. Global constants
- *   4. Container — register all bindings and singletons
- *   5. Load routes
- *   6. Dispatch
+ *   1. Load the Composer autoloader
+ *   2. Load environment variables from .env
+ *   3. Define path constants (bootstrap/constants.php)
+ *   4. Boot the application (bootstrap/app.php) and run it
+ *
+ * Nothing else belongs here. All bindings, routes, and configuration
+ * live in Service Providers and the bootstrap files.
  */
 
 use App\Core\Container;
@@ -26,54 +27,14 @@ use App\Core\Response;
 require_once dirname(__DIR__) . '/vendor/autoload.php';
 
 // 2. load environment variables from .env file
+// must be loaded before constants.php
 $dotenv = Dotenv\Dotenv::createImmutable(dirname(__DIR__));
 $dotenv->load();
 
 // 3. global constants
-define('BASE_PATH', dirname(__DIR__));
+require_once dirname(__DIR__). '/boostrap/constants.php';
 
-// 4. container
-$container = new Container();
+// 4. Boot the application
+$app = require_once dirname(__DIR__) . '/bootstrap/app.php';
 
-// 5. register bindings and singletons
-$container->instance(Request::class,  new Request());
-$container->instance(Response::class, new Response());
-
-
-$container->singleton(\PDO::class, function (Container $c): \PDO {
-    return new \PDO(
-        dsn:      $_ENV['DB_DSN']  ?? 'mysql:host=127.0.0.1;dbname=elearning;charset=utf8mb4',
-        username: $_ENV['DB_USER'] ?? 'root',
-        password: $_ENV['DB_PASS'] ?? '',
-        options:  [
-            \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
-            \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
-            \PDO::ATTR_EMULATE_PREPARES   => false,
-        ]
-    );
-});
-
-$container->singleton(View::class, function (Container $c): View {
-    return new View(
-        viewsPath:     BASE_PATH . '/App/Views',
-        defaultLayout: 'layouts/main'
-    );
-});
-
-$container->extend(View::class, function (View $view, Container $c): View {
-    $view->share('appName', $_ENV['APP_NAME'] ?? 'eLearning Platform');
-    return $view;
-});
-
-$container->singleton(Router::class, function (Container $c): Router {
-    return new Router($c->make(View::class));
-});
-
-$router = $container->make(Router::class);
-require_once BASE_PATH . '/App/Routes/web.php';
-
-// 6. Dispatch
-$router->dispatch(
-    $container->make(Request::class),
-    $container->make(Response::class)
-);
+$app->run();
