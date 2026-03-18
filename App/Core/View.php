@@ -170,7 +170,7 @@ class View
     /*
      * Resolve a view name to its absolute filesystem path
      * */
-    public function resolvePath(string $view): string
+    private function resolvePath(string $view): string
     {
         $relative = str_replace('.', '/', $view);
         $relative = ltrim($relative, '/');

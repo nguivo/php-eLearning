@@ -67,6 +67,8 @@ class Response
         foreach ($this->headers as $name => $value) {
             header("{$name}: {$value}");
         }
+
+        echo $this->body;
     }
 
 

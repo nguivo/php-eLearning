@@ -3,13 +3,15 @@
 namespace App\Controllers;
 
 use App\Core\Controller;
+use App\Core\Request;
+use App\Core\Response;
 
 class HomeController extends Controller
 {
 
-    public function index(): void
+    public function index(Request $request, Response $response): void
     {
-        echo "Hello world";
+        $this->view('home/home');
     }
 
 }

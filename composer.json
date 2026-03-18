@@ -3,7 +3,6 @@
     "type": "project",
     "autoload": {
         "psr-4": {
-            "Framework\\": "./",
             "App\\": "./App"
         }
     },

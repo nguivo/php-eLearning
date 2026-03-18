@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-class CourseServices
+class CourseService
 {
     /*
      * TODO createCourse()
