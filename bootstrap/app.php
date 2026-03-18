@@ -21,7 +21,7 @@ declare(strict_types=1);
 
 use App\Core\Application;
 
-$app = new Application();
+$app = new Application(BASE_PATH);
 
 $app->registerProviders([
     // Infrastructure first — other providers depend on these
@@ -32,3 +32,5 @@ $app->registerProviders([
     // Application-level bindings last
     App\Providers\AppServiceProvider::class,
 ]);
+
+return $app;

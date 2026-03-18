@@ -19,6 +19,7 @@ use App\Middleware\GuestMiddleware;
 // get() returns a Route. ->name() calls Route::setName() and registers the
 // name in the Router's $namedRoutes index. No change in written syntax.
 $router->get('/', 'HomeController@index')->name('home');
+$router->get('/home', 'HomeController@index')->name('home');
 
 $router->get('/courses', 'CourseController@index')->name('courses.index');
 

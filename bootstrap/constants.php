@@ -38,3 +38,9 @@ define('ROUTES_PATH',  BASE_PATH . '/App/Routes');
 define('STORAGE_PATH', BASE_PATH . '/storage');
 define('PUBLIC_PATH',  BASE_PATH . '/public');
 define('LOGS_PATH',    BASE_PATH . '/logs');
+
+// Directory Separator
+define('DS', DIRECTORY_SEPARATOR);
+
+// Site constants
+define('APP_NAME', $_ENV['APP_NAME']);

@@ -2,6 +2,8 @@
 
 namespace App\Core;
 
+use Exception;
+
 /**
  * Application — Owns the Container, boots Service Providers, runs the request.
  *
@@ -44,11 +46,15 @@ class Application
     /* Dispatch the current HTTP request through the Router */
     public function run(): void
     {
-        $router = $this->container->make(Router::class);
-        $request = $this->container->make(Request::class);
-        $response = $this->container->make(Response::class);
+        try {
+            $router = $this->container->make(Router::class);
+            $request = $this->container->make(Request::class);
+            $response = $this->container->make(Response::class);
 
-        $router->dispatch($request, $response);
+            $router->dispatch($request, $response);
+        } catch (Exception $e) {
+            die($e->getMessage());
+        }
     }
 
 

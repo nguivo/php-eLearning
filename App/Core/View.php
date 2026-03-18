@@ -174,7 +174,7 @@ class View
     {
         $relative = str_replace('.', '/', $view);
         $relative = ltrim($relative, '/');
-        $fullPath = $this->viewsPath. DIRECTORY_SEPARATOR.$relative.'.php';
+        $fullPath = $this->viewsPath. DS.$relative.'.php';
         if (!file_exists($fullPath)) {
             throw new \RuntimeException(
                 "View [{$view}] not found. Expected file at: {$fullPath}"
